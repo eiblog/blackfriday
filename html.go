@@ -751,8 +751,13 @@ func (options *Html) DocumentFooter(out *bytes.Buffer) {
 
 }
 
+var off = 0
+
 func (options *Html) TocHeaderWithAnchor(text []byte, level int, anchor string) {
-	for level > options.currentLevel {
+	if options.currentLevel == 0 {
+		off = level - 1
+	}
+	for level > options.currentLevel+off {
 		switch {
 		case bytes.HasSuffix(options.toc.Bytes(), []byte("</li>\n")):
 			// this sublist can nest underneath a header
@@ -769,7 +774,7 @@ func (options *Html) TocHeaderWithAnchor(text []byte, level int, anchor string) 
 		options.currentLevel++
 	}
 
-	for level < options.currentLevel {
+	for level < options.currentLevel+off {
 		options.toc.WriteString("</ul>")
 		if options.currentLevel > 1 {
 			options.toc.WriteString("</li>\n")
