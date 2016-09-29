@@ -177,6 +177,22 @@ func attrEscape(out *bytes.Buffer, src []byte) {
 	}
 }
 
+func imgSize(out *bytes.Buffer, src []byte) int {
+	for i, ch := range src {
+		if i > 0 && ch == '=' && src[i-1] == ' ' {
+			target := src[i+1:]
+			index := bytes.IndexByte(target, 'x')
+			out.WriteString("width=\"")
+			out.Write(target[0:index])
+			out.WriteString("\" height=\"")
+			out.Write(target[index+1:])
+			out.WriteString("\" ")
+			return i - 1
+		}
+	}
+	return len(src) - 1
+}
+
 func entityEscapeWithSkip(out *bytes.Buffer, src []byte, skipRanges [][]int) {
 	end := 0
 	for _, rang := range skipRanges {
@@ -517,7 +533,14 @@ func (options *Html) Image(out *bytes.Buffer, link []byte, title []byte, alt []b
 		return
 	}
 
-	out.WriteString("<img src=\"")
+	out.WriteString("<img ")
+	index := imgSize(out, link)
+	if index < len(link)-1 {
+		link = link[0:index]
+		out.WriteString("data-src=\"")
+	} else {
+		out.WriteString("src=\"")
+	}
 	options.maybeWriteAbsolutePrefix(out, link)
 	attrEscape(out, link)
 	out.WriteString("\" alt=\"")
@@ -729,9 +752,11 @@ func (options *Html) DocumentFooter(out *bytes.Buffer) {
 		}
 
 		// insert the table of contents
-		out.WriteString("<nav>\n")
-		out.Write(options.toc.Bytes())
-		out.WriteString("</nav>\n")
+		if len(options.toc.Bytes()) > 0 {
+			out.WriteString("<div id=\"toc-container\"><nav id=\"toc\"><p><strong>预览目录</strong></p>\n")
+			out.Write(options.toc.Bytes())
+			out.WriteString("</nav></div>\n")
+		}
 
 		// corner case spacing issue
 		if options.flags&HTML_COMPLETE_PAGE == 0 && options.flags&HTML_OMIT_CONTENTS == 0 {
